@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pymongo
+motor
+langchain
+langchain-google-genai
+langchain-community
+chromadb
+python-dotenv
+tiktoken
