@@ -9,8 +9,12 @@ export const apiClient = axios.create({
   },
 });
 
-export const sendMessage = async (message, sessionId) => {
-  const response = await apiClient.post('/chat', { message, session_id: sessionId });
+export const sendMessage = async (message, sessionId, attachments = []) => {
+  const response = await apiClient.post('/chat', { 
+    message, 
+    session_id: sessionId,
+    attachments 
+  });
   return response.data;
 };
 

@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { sendMessage } from '../api/client';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';
 
 const ChatInterface = ({ messages, setMessages, currentSessionId, setCurrentSessionId }) => {
     const [input, setInput] = useState('');
+    const [attachments, setAttachments] = useState([]);
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -14,20 +16,52 @@ const ChatInterface = ({ messages, setMessages, currentSessionId, setCurrentSess
 
     useEffect(scrollToBottom, [messages]);
 
+    const handleFileSelect = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        const newAttachments = [];
+        for (const file of files) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                newAttachments.push({
+                    filename: file.name,
+                    content_type: file.type,
+                    data: e.target.result.split(',')[1] // Extract base64 part
+                });
+                if (newAttachments.length === files.length) {
+                    setAttachments(prev => [...prev, ...newAttachments]);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+        // Reset input so same file can be selected again
+        e.target.value = '';
+    };
+
+    const removeAttachment = (index) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
+
     const handleSend = async (e) => {
         e.preventDefault();
-        if (!input.trim() || loading) return;
+        if ((!input.trim() && attachments.length === 0) || loading) return;
 
         const userMsg = input;
+        const currentAttachments = [...attachments];
+
         setInput('');
-        setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+        setAttachments([]);
         setLoading(true);
 
-        try {
-            // Pass currentSessionId (which might be null)
-            const response = await sendMessage(userMsg, currentSessionId);
+        // Optimistic UI update
+        // We simulate the message to show immediately
+        const optimistContent = userMsg + (currentAttachments.length > 0 ? ` [Attached ${currentAttachments.length} file(s)]` : "");
+        setMessages(prev => [...prev, { role: 'user', content: optimistContent }]);
 
-            // Backend returns session_id. If we were in a new chat, update our state.
+        try {
+            const response = await sendMessage(userMsg, currentSessionId, currentAttachments);
+
             if (!currentSessionId && response.session_id) {
                 setCurrentSessionId(response.session_id);
             }
@@ -35,7 +69,8 @@ const ChatInterface = ({ messages, setMessages, currentSessionId, setCurrentSess
             setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
         } catch (error) {
             console.error("Error sending message:", error);
-            setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error. Please try again." }]);
+            const errorMessage = error.response?.data?.detail || "Sorry, I encountered an error. Please try again.";
+            setMessages(prev => [...prev, { role: 'assistant', content: errorMessage }]);
         } finally {
             setLoading(false);
         }
@@ -104,18 +139,59 @@ const ChatInterface = ({ messages, setMessages, currentSessionId, setCurrentSess
 
             {/* Input Area */}
             <div className="p-4 bg-white border-t border-gray-200">
+                {/* File Previews */}
+                {attachments.length > 0 && (
+                    <div className="flex space-x-2 mb-2 overflow-x-auto pb-2">
+                        {attachments.map((att, idx) => (
+                            <div key={idx} className="relative group bg-gray-100 border border-gray-300 rounded-md p-2 flex items-center space-x-2 w-40 flex-shrink-0">
+                                {att.content_type.startsWith('image/') ? (
+                                    <ImageIcon size={20} className="text-purple-500" />
+                                ) : (
+                                    <FileText size={20} className="text-orange-500" />
+                                )}
+                                <span className="text-xs truncate text-gray-700 flex-1">{att.filename}</span>
+                                <button
+                                    onClick={() => removeAttachment(idx)}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-80 hover:opacity-100 transition"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <form onSubmit={handleSend} className="flex items-center space-x-2 max-w-4xl mx-auto">
+                    {/* Hidden File Input */}
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        multiple
+                        accept="image/*,.pdf"
+                        className="hidden"
+                    />
+
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-3 text-gray-500 hover:text-gray-700 transition hover:bg-gray-100 rounded-lg"
+                        title="Attach files"
+                    >
+                        <Paperclip size={20} />
+                    </button>
+
                     <input
                         type="text"
                         className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                        placeholder="Type your message..."
+                        placeholder="Type a message..."
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         disabled={loading}
                     />
                     <button
                         type="submit"
-                        disabled={loading || !input.trim()}
+                        disabled={loading || (!input.trim() && attachments.length === 0)}
                         className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
                         <Send size={20} />

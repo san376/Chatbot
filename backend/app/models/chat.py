@@ -2,15 +2,22 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
+class Attachment(BaseModel):
+    filename: str
+    content_type: str
+    data: str # Base64 encoded content
+
 class ChatMessage(BaseModel):
     role: str
     content: str
     timestamp: datetime = datetime.now()
     session_id: Optional[str] = None
+    attachments: Optional[List[Attachment]] = None
 
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    attachments: Optional[List[Attachment]] = []
 
 class ChatResponse(BaseModel):
     response: str
