@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getSessions, updateSessionTitle } from '../api/client';
-import { MessageSquare, Plus, Clock, Pencil, Check, X } from 'lucide-react';
+import { getSessions, updateSessionTitle, deleteSession } from '../api/client';
+import { MessageSquare, Plus, Clock, Pencil, Check, X, Trash2 } from 'lucide-react';
 
 const HistorySidebar = ({ onSessionClick, onNewChat }) => {
     const [sessions, setSessions] = useState([]);
@@ -23,7 +23,7 @@ const HistorySidebar = ({ onSessionClick, onNewChat }) => {
     };
 
     const startEditing = (e, session) => {
-        e.stopPropagation(); // Prevent clicking the session
+        e.stopPropagation();
         setEditingId(session.session_id);
         setEditTitle(session.title || "New Chat");
     };
@@ -33,7 +33,7 @@ const HistorySidebar = ({ onSessionClick, onNewChat }) => {
         try {
             await updateSessionTitle(editingId, editTitle);
             setEditingId(null);
-            fetchSessions(); // Refresh list immediately
+            fetchSessions();
         } catch (error) {
             console.error("Failed to update title", error);
         }
@@ -42,6 +42,18 @@ const HistorySidebar = ({ onSessionClick, onNewChat }) => {
     const cancelEditing = (e) => {
         e.stopPropagation();
         setEditingId(null);
+    };
+
+    const handleDelete = async (e, sessionId) => {
+        e.stopPropagation();
+        if (window.confirm("Are you sure you want to delete this chat?")) {
+            try {
+                await deleteSession(sessionId);
+                fetchSessions(); // Refresh list
+            } catch (error) {
+                console.error("Failed to delete session", error);
+            }
+        }
     };
 
     return (
@@ -102,13 +114,22 @@ const HistorySidebar = ({ onSessionClick, onNewChat }) => {
                                     <button onClick={cancelEditing} className="p-1 hover:text-red-400 text-gray-400"><X size={14} /></button>
                                 </>
                             ) : (
-                                <button
-                                    onClick={(e) => startEditing(e, session)}
-                                    className="p-1 opacity-0 group-hover:opacity-100 hover:text-white text-gray-500 transition-opacity"
-                                    title="Rename"
-                                >
-                                    <Pencil size={14} />
-                                </button>
+                                <>
+                                    <button
+                                        onClick={(e) => startEditing(e, session)}
+                                        className="p-1 opacity-0 group-hover:opacity-100 hover:text-white text-gray-500 transition-opacity"
+                                        title="Rename"
+                                    >
+                                        <Pencil size={14} />
+                                    </button>
+                                    <button
+                                        onClick={(e) => handleDelete(e, session.session_id)}
+                                        className="p-1 opacity-0 group-hover:opacity-100 hover:text-red-400 text-gray-500 transition-opacity"
+                                        title="Delete"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </>
                             )}
                         </div>
                     </div>

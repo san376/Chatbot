@@ -32,3 +32,8 @@ export const updateSessionTitle = async (sessionId, newTitle) => {
   const response = await apiClient.patch(`/sessions/${sessionId}`, { title: newTitle });
   return response.data;
 };
+
+export const deleteSession = async (sessionId) => {
+  const response = await apiClient.delete(`/sessions/${sessionId}`);
+  return response.data;
+};

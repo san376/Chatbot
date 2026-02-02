@@ -160,3 +160,13 @@ async def update_session_title(session_id: str, update: SessionUpdate, db=Depend
         upsert=True
     )
     return Session(session_id=session_id, title=update.title, created_at=datetime.now())
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(session_id: str, db=Depends(get_database)):
+    # 1. Delete all messages for this session
+    await db.history.delete_many({"session_id": session_id})
+    
+    # 2. Delete session metadata
+    await db.sessions.delete_one({"session_id": session_id})
+    
+    return {"message": "Session deleted successfully"}
