@@ -180,7 +180,6 @@ const ChatInterface = ({ messages, setMessages, currentSessionId, setCurrentSess
                     >
                         <Paperclip size={20} />
                     </button>
-
                     <input
                         type="text"
                         className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
